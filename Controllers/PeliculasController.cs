@@ -20,9 +20,38 @@ namespace MVCconBD2.Controllers
         }
 
         // GET: Peliculas
-        public async Task<IActionResult> Index()
+        // Recibe el texto a buscar y la página actual
+        public async Task<IActionResult> Index(string buscarTitulo, int? numeroPagina)
         {
-            return View(await _context.Pelicula.ToListAsync());
+            // 1. Preparamos la consulta a la base de datos
+            var peliculas = from p in _context.Pelicula
+                            select p;
+
+            // 2. Lógica del Buscador: Si el usuario escribió algo, filtramos
+            if (!String.IsNullOrEmpty(buscarTitulo))
+            {
+                peliculas = peliculas.Where(s => s.Titulo!.Contains(buscarTitulo));
+            }
+
+            // 3. Lógica de Paginación
+            int pageSize = 5; // Requisito del profesor: 5 o 10 registros
+            int pageIndex = numeroPagina ?? 1; // Si no hay página, vamos a la 1
+
+            int totalRegistros = await peliculas.CountAsync(); // Contamos cuántas hay en total
+            int totalPaginas = (int)Math.Ceiling(totalRegistros / (double)pageSize);
+
+            // Guardamos datos en el ViewBag para poder dibujar los botones HTML
+            ViewBag.TotalPaginas = totalPaginas;
+            ViewBag.PaginaActual = pageIndex;
+            ViewBag.BuscarTitulo = buscarTitulo; // Guarda la búsqueda al cambiar de página
+
+            // .Skip() se salta las páginas anteriores y .Take() toma los 5 registros correspondientes
+            var peliculasPaginadas = await peliculas
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return View(peliculasPaginadas);
         }
 
         // GET: Peliculas/Details/5
